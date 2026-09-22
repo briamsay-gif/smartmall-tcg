@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smartmall TCG — BETA 4.2 · Cartas</title>
+<link rel="stylesheet" href="assets/styles.css">
+
+</head>
+<body>
+
+<header>
+  <a class="brand" href="index.html" style="text-decoration:none;color:inherit">
+    <img src="assets/logo.png" alt="Smartmall TCG">
+    <div><div class="brand-title">SMARTMALL TCG</div><div class="brand-sub">Pokémon TCG · Catálogo</div></div>
+  </a>
+  <div class="header-spacer"></div>
+  <nav class="header-nav">
+    <a class="nav-link" href="index.html">Inicio</a>
+    <a class="nav-link" href="colecciones.html">Colecciones</a>
+    <a class="nav-link" href="compras-mayoristas.html">Compras Mayoristas</a>
+    <a class="nav-link" href="compras-minoristas.html">Compras Minoristas</a>
+    <a class="nav-link" href="puntos-venta.html">Puntos de venta</a>
+  </nav>
+</header>
+
+
+<main class="page-container">
+  <a class="back-link" href="colecciones.html">← Colecciones</a>
+  <div class="page-heading">
+    <div class="kicker">Smartmall TCG · Catálogo</div>
+    <h1 id="setTitle">Cartas</h1>
+    <p id="setMeta">Seleccioná una colección.</p>
+  </div>
+  <div class="cards-page-controls">
+    <input id="searchInput" type="search" placeholder="Buscar por nombre o número">
+    <select id="sortSelect"><option value="number">Número</option><option value="name">Nombre</option></select>
+  </div>
+  <div id="status" class="multipage-note" style="margin-bottom:18px">Cargando…</div>
+  <div id="cards" class="cards"></div>
+</main>
+<div id="cardModal" class="card-detail-modal hidden">
+  <div class="card-detail-box">
+    <button class="card-detail-close" id="modalClose" aria-label="Cerrar">×</button>
+    <img id="modalImage" src="" alt="">
+    <div id="modalInfo"></div>
+  </div>
+</div>
+
+
+<script src="assets/catalog.js"></script>
+<script>
+const API="https://api.tcgdex.net/v2";
+const params=new URLSearchParams(location.search);
+const code=params.get("set");
+const collection=COLLECTIONS.find(c=>c.code===code);
+let currentCards=[];
+const $=id=>document.getElementById(id);
+
+function normalizeText(v){return String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
+async function fetchJSON(url){
+  const r=await fetch(url,{mode:"cors",cache:"no-store"});
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+async function fetchSet(c){
+  try{return await fetchJSON(`${API}/${c.language}/sets/${c.apiId}`);}
+  catch(e){
+    const sets=await fetchJSON(`${API}/${c.language}/sets`);
+    const wanted=normalizeText(c.name);
+    const found=sets.find(x=>normalizeText(x.name)===wanted)||sets.find(x=>normalizeText(x.name).includes(wanted)||wanted.includes(normalizeText(x.name)));
+    if(!found) throw new Error(`No se encontró ${c.display} en TCGdex.`);
+    return fetchJSON(`${API}/${c.language}/sets/${found.id}`);
+  }
+}
+function cardImage(c){
+  return c.image ? c.image+"/high.png" : `https://assets.tcgdex.net/${collection.language}/${collection.apiId.startsWith("me")?"me":"sv"}/${collection.apiId}/${c.localId}/high.png`;
+}
+function render(){
+  const q=$("searchInput").value.trim().toLowerCase();
+  let cards=currentCards.filter(c=>`${c.localId} ${c.name}`.toLowerCase().includes(q));
+  if($("sortSelect").value==="name") cards.sort((a,b)=>a.name.localeCompare(b.name));
+  else cards.sort((a,b)=>String(a.localId).localeCompare(String(b.localId),undefined,{numeric:true}));
+  $("cards").innerHTML=cards.length?cards.map(c=>`
+    <article class="card" data-id="${String(c.id).replace(/"/g,"&quot;")}">
+      <img src="${cardImage(c)}" alt="${c.localId} ${c.name}" loading="lazy" onerror="this.src='https://placehold.co/300x420/eef2f7/17324f?text=${encodeURIComponent(c.localId)}'">
+      <div class="muted">${c.localId}</div>
+      <h3 title="${String(c.name).replace(/"/g,"&quot;")}">${c.name}</h3>
+    </article>`).join(""):`<div class="notice">No se encontraron cartas.</div>`;
+  document.querySelectorAll("[data-id]").forEach(el=>el.onclick=()=>openModal(el.dataset.id));
+}
+function openModal(id){
+  const c=currentCards.find(x=>String(x.id)===String(id)); if(!c)return;
+  $("modalImage").src=cardImage(c);
+  $("modalImage").alt=`${c.localId} ${c.name}`;
+  $("modalInfo").innerHTML=`<div class="muted">${c.localId}</div><h2>${c.name}</h2><p class="muted">Colección: ${collection.display} — ${collection.name}</p><p>Catálogo Smartmall TCG.</p>`;
+  $("cardModal").classList.remove("hidden");
+}
+function closeModal(){$("cardModal").classList.add("hidden");}
+$("modalClose").onclick=closeModal;
+$("cardModal").onclick=e=>{if(e.target===$("cardModal"))closeModal();};
+$("searchInput").oninput=render;
+$("sortSelect").onchange=render;
+
+(async()=>{
+  if(!collection){
+    $("setTitle").textContent="Cartas";
+    $("setMeta").textContent="Elegí una colección desde la página de Colecciones.";
+    $("status").textContent="No se seleccionó ninguna colección.";
+    return;
+  }
+  $("setTitle").textContent=`${collection.display} — ${collection.name}`;
+  $("setMeta").textContent=collection.languageLabel;
+  $("status").textContent=`Cargando ${collection.display}…`;
+  try{
+    const data=await fetchSet(collection);
+    currentCards=data.cards||[];
+    $("status").textContent=`${collection.display} cargada: ${currentCards.length} cartas.`;
+    render();
+  }catch(err){
+    $("status").innerHTML=`No se pudo cargar la colección. ${err.message}`;
+    $("cards").innerHTML=`<div class="error">Revisá la conexión a internet y volvé a intentar.</div>`;
+  }
+})();
+</script>
+
+</body>
+</html>

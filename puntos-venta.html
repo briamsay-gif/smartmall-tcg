@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smartmall TCG — BETA 4.2 · Puntos Oficiales</title>
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+
+<header>
+  <a class="brand" href="index.html" style="text-decoration:none;color:inherit">
+    <img src="assets/logo.png" alt="Smartmall TCG">
+    <div><div class="brand-title">SMARTMALL TCG</div><div class="brand-sub">Pokémon TCG · Catálogo</div></div>
+  </a>
+  <div class="header-spacer"></div>
+  <nav class="header-nav">
+    <a class="nav-link" href="index.html">Inicio</a>
+    <a class="nav-link" href="colecciones.html">Colecciones</a>
+    <a class="nav-link" href="compras-mayoristas.html">Compras Mayoristas</a>
+    <a class="nav-link" href="compras-minoristas.html">Compras Minoristas</a>
+    <a class="nav-link" href="puntos-venta.html">Puntos de venta</a>
+  </nav>
+</header>
+
+
+<main class="sales-page">
+<section class="smartmall-sales-section">
+  <div class="smartmall-sales-inner">
+    <div class="smartmall-section-heading">
+      <span class="smartmall-kicker">SMARTMALL TCG</span>
+      <h1>📍 Puntos Oficiales de Venta</h1>
+      <p>Encontrá los puntos oficiales donde podés conseguir productos de Smartmall TCG.</p>
+    </div>
+    <div class="smartmall-sales-layout">
+      <div class="smartmall-sales-list">
+        <button class="smartmall-sale-card" onclick="smartmallGoToSale(0)">
+          <span class="smartmall-sale-badge">PUNTO OFICIAL DE VENTA</span>
+          <strong>📍 Maxikiosco Nilo</strong>
+          <small>Calle 52 Nº 260 · Villa Cañás, Santa Fe</small>
+        </button>
+        <button class="smartmall-sale-card" onclick="smartmallGoToSale(1)">
+          <span class="smartmall-sale-badge">PUNTO OFICIAL DE VENTA</span>
+          <strong>📍 DecoByMariana</strong>
+          <small>Villa Cañás, Santa Fe</small>
+        </button>
+      </div>
+      <div class="smartmall-map-wrap"><div id="smartmall-sales-map"></div></div>
+    </div>
+    <div style="text-align:center;margin-top:12px">
+      <a href="https://www.google.com/maps/search/?api=1&query=-34.0068,-61.6072" target="_blank" rel="noopener" style="display:inline-block;color:#e7b52f;font-weight:800;text-decoration:none">🗺️ Abrir zona en Google Maps</a>
+    </div>
+  </div>
+</section>
+</main>
+
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  const sales=[
+    {name:"Maxikiosco Nilo",address:"Calle 52 Nº 260 · Villa Cañás, Santa Fe",lat:-34.0043826,lng:-61.6076696},
+    {name:"DecoByMariana",address:"Villa Cañás, Santa Fe",lat:-34.009806,lng:-61.6087401}
+  ];
+  function init(){
+    const el=document.getElementById("smartmall-sales-map");
+    if(!el||typeof L==="undefined")return;
+    const map=L.map(el).setView([-34.0068,-61.6072],15);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
+      maxZoom:19,
+      attribution:"&copy; OpenStreetMap contributors"
+    }).addTo(map);
+    const logoIcon=L.divIcon({
+      className:"",
+      html:'<div class="smartmall-map-logo"><img src="assets/logo.png" alt="Smartmall TCG"></div>',
+      iconSize:[50,50],iconAnchor:[25,25],popupAnchor:[0,-25]
+    });
+    sales.forEach((s,i)=>{
+      const marker=L.marker([s.lat,s.lng],{icon:logoIcon}).addTo(map);
+      marker.bindPopup('<div style="min-width:210px"><b style="color:#b07d00">PUNTO OFICIAL DE VENTA</b><br><strong>📍 '+s.name+'</strong><br><span>'+s.address+'</span><br><br><a target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+s.lat+','+s.lng+'">Cómo llegar</a></div>');
+      sales[i].marker=marker;
+    });
+    const group=L.featureGroup(sales.map(s=>s.marker));
+    map.fitBounds(group.getBounds().pad(.35));
+    window.smartmallGoToSale=function(i){
+      const s=sales[i];
+      map.flyTo([s.lat,s.lng],17,{duration:.8});
+      setTimeout(()=>s.marker.openPopup(),850);
+    };
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
+})();
+</script>
+
+</body>
+</html>
